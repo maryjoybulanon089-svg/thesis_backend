@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using ThesisRepository.Data;
 using ThesisRepository.Services;
 using ThesisRepository.Middleware;
@@ -40,9 +41,36 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Database – SQL Server @ CPE\SQLEXPRESS / ThesisRepositoryDB
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Database – support either SQL Server (DefaultConnection) or a DATABASE_URL / Postgres connection provided by Render
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+                  ?? builder.Configuration["ConnectionStrings:DefaultConnection"]
+                  ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgres", StringComparison.OrdinalIgnoreCase))
+{
+    // Convert DATABASE_URL (postgres://user:pass@host:port/db) to a Npgsql connection string
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+    var pgCs = new Npgsql.NpgsqlConnectionStringBuilder()
+    {
+        Host = uri.Host,
+        Port = uri.Port,
+        Username = userInfo.Length > 0 ? userInfo[0] : string.Empty,
+        Password = userInfo.Length > 1 ? userInfo[1] : string.Empty,
+        Database = uri.AbsolutePath.TrimStart('/'),
+        Pooling = true,
+        SslMode = Npgsql.SslMode.Require,
+        TrustServerCertificate = true
+    }.ToString();
+
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(pgCs));
+}
+else
+{
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+}
 
 // JWT Authentication
 var jwtSecret = builder.Configuration["JwtSettings:Secret"]
