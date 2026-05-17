@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -45,32 +46,47 @@ namespace ThesisRepository.Services
 
         private async Task DoWork(CancellationToken stoppingToken)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-            // Calculate the threshold date (30 days ago)
-            var thresholdDate = DateTime.UtcNow.AddDays(-30);
-
-            // Find all theses that are rejected, not yet deleted, 
-            // and their RejectedAt date is older than 30 days
-            var thesesToDelete = context.Theses
-                .Where(t => t.Status == "rejected" 
-                         && !t.IsDeleted 
-                         && t.RejectedAt != null 
-                         && t.RejectedAt <= thresholdDate)
-                .ToList();
-
-            if (thesesToDelete.Any())
+            try
             {
-                _logger.LogInformation($"Found {thesesToDelete.Count} rejected theses older than 30 days. Soft-deleting them.");
-
-                foreach (var thesis in thesesToDelete)
+                using var scope = _serviceProvider.CreateScope();
+                var context = scope.ServiceProvider.GetService<ApplicationDbContext>();
+                if (context == null)
                 {
-                    thesis.IsDeleted = true;
+                    _logger.LogWarning("ApplicationDbContext not available in scope.");
+                    return;
                 }
 
-                await context.SaveChangesAsync(stoppingToken);
-                _logger.LogInformation("Successfully soft-deleted old rejected theses.");
+                // Calculate the threshold date (30 days ago)
+                var thresholdDate = DateTime.UtcNow.AddDays(-30);
+
+                // Use async query to avoid blocking threads; guard against connectivity issues
+                var thesesToDelete = await context.Theses
+                    .Where(t => t.Status == "rejected"
+                             && !t.IsDeleted
+                             && t.RejectedAt != null
+                             && t.RejectedAt <= thresholdDate)
+                    .ToListAsync(stoppingToken);
+
+                if (thesesToDelete != null && thesesToDelete.Count > 0)
+                {
+                    _logger.LogInformation($"Found {thesesToDelete.Count} rejected theses older than 30 days. Soft-deleting them.");
+
+                    foreach (var thesis in thesesToDelete)
+                    {
+                        thesis.IsDeleted = true;
+                    }
+
+                    await context.SaveChangesAsync(stoppingToken);
+                    _logger.LogInformation("Successfully soft-deleted old rejected theses.");
+                }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                // Expected during shutdown
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while attempting to auto-delete theses. Will retry on next interval.");
             }
         }
     }

@@ -23,7 +23,7 @@ namespace ThesisRepository.Data
             {
                 entity.ToTable("Users");
                 entity.HasKey(u => u.UserId);
-                entity.Property(u => u.UserId).UseIdentityColumn();
+                entity.Property(u => u.UserId).UseIdentityByDefaultColumn();
 
                 entity.HasIndex(u => u.Email).IsUnique();
                 entity.HasIndex(u => u.Role);
@@ -44,7 +44,7 @@ namespace ThesisRepository.Data
             {
                 entity.ToTable("Theses");
                 entity.HasKey(t => t.ThesisId);
-                entity.Property(t => t.ThesisId).UseIdentityColumn();
+                entity.Property(t => t.ThesisId).UseIdentityByDefaultColumn();
 
                 entity.HasIndex(t => t.Status);
                 entity.HasIndex(t => t.Year);
@@ -60,7 +60,8 @@ namespace ThesisRepository.Data
                 entity.Property(t => t.Keywords).HasMaxLength(500).HasDefaultValue("[]");
                 entity.Property(t => t.FilePath).HasMaxLength(1000);
                 entity.Property(t => t.Status).IsRequired().HasMaxLength(50).HasDefaultValue("pending");
-                entity.Property(t => t.UploadedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+                // Use database-agnostic default timestamp; Postgres will map this appropriately
+                entity.Property(t => t.UploadedAt).IsRequired().HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(t => t.ViewCount).HasDefaultValue(0);
                 entity.Property(t => t.DownloadCount).HasDefaultValue(0);
 

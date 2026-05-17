@@ -41,17 +41,21 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Database – support either SQL Server (DefaultConnection) or a DATABASE_URL / Postgres connection provided by Render
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
-                  ?? builder.Configuration["ConnectionStrings:DefaultConnection"]
-                  ?? builder.Configuration.GetConnectionString("DefaultConnection");
-
-if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgres", StringComparison.OrdinalIgnoreCase))
+// Database – PostgreSQL only. Connection must be provided via environment variable
+// ConnectionStrings__DefaultConnection (GetConnectionString("DefaultConnection"))
+var conn = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(conn))
 {
-    // Convert DATABASE_URL (postgres://user:pass@host:port/db) to a Npgsql connection string
-    var uri = new Uri(databaseUrl);
+    Console.Error.WriteLine("FATAL: ConnectionStrings__DefaultConnection is not set. Set the PostgreSQL connection string in the environment.");
+    Environment.Exit(1);
+}
+
+// Accept either a full ADO.NET connection string or a postgres:// URI
+if (conn.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
+{
+    var uri = new Uri(conn);
     var userInfo = uri.UserInfo.Split(':');
-    var pgCs = new Npgsql.NpgsqlConnectionStringBuilder()
+    conn = new NpgsqlConnectionStringBuilder()
     {
         Host = uri.Host,
         Port = uri.Port,
@@ -59,18 +63,13 @@ if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgres", Str
         Password = userInfo.Length > 1 ? userInfo[1] : string.Empty,
         Database = uri.AbsolutePath.TrimStart('/'),
         Pooling = true,
-        SslMode = Npgsql.SslMode.Require,
+        SslMode = SslMode.Require,
         TrustServerCertificate = true
     }.ToString();
+}
 
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseNpgsql(pgCs));
-}
-else
-{
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-}
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(conn));
 
 // JWT Authentication
 var jwtSecret = builder.Configuration["JwtSettings:Secret"]
