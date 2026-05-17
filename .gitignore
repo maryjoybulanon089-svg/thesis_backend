@@ -1,0 +1,40 @@
+# Build outputs
+bin/
+obj/
+
+# Publish output
+publish/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Rider
+.idea/
+
+# .NET user secrets
+secrets.json
+
+# Logs
+*.log
+
+# Uploaded PDFs and other binary assets - do NOT commit
+uploads/
+
+# Rider caches
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+.packages/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# Ignore published website folder
+wwwroot/

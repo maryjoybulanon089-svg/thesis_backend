@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: thesis-backend
+    env: docker
+    region: oregon
+    branch: main
+    dockerfilePath: Dockerfile
+    autoDeploy: true
+    plan: free
+    instanceType: starter
