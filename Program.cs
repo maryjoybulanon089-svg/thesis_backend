@@ -97,17 +97,21 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads"
 });
 
+// Trust proxy headers (X-Forwarded-For / X-Forwarded-Proto) when deployed behind a reverse proxy
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+// Clear the default known networks/proxies so the proxy headers from the platform are accepted
+forwardedOptions.KnownNetworks.Clear();
+forwardedOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedOptions);
+
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<AdminSessionTimeoutMiddleware>();
 app.MapControllers();
-
-// Trust proxy headers (X-Forwarded-For / X-Forwarded-Proto) when deployed behind a reverse proxy
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
 
 // ── Database initialisation ───────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
@@ -134,12 +138,18 @@ using (var scope = app.Services.CreateScope())
 }
 
 // If running on Render (or other PaaS) bind to the PORT environment variable
+// Bind to PORT (Render) or ASPNETCORE_URLS when provided by the hosting platform.
 var portEnv = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrEmpty(portEnv))
 {
-    // Clear any existing URLs and bind to the port from the environment
+    var url = $"http://0.0.0.0:{portEnv}";
     app.Urls.Clear();
-    app.Urls.Add($"http://0.0.0.0:{portEnv}");
+    app.Urls.Add(url);
+    Console.WriteLine($"Binding to {url} (from PORT)");
+}
+else if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+{
+    Console.WriteLine($"Using ASPNETCORE_URLS={Environment.GetEnvironmentVariable("ASPNETCORE_URLS")} ");
 }
 
 app.Run();
