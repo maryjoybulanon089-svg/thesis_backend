@@ -1,0 +1,11 @@
+{
+  "name": "thesis-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "sh -c \"echo 'This repository is a Docker-based .NET app. Configure the Render service to use the Dockerfile (env: docker) or deploy the published DLL.' && exit 0\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
