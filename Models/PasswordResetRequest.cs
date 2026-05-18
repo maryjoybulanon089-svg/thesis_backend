@@ -26,7 +26,7 @@ namespace ThesisRepository.Models
         [Column("Status")]
         public string Status { get; set; } = "pending";
 
-        // DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+        // DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP
         [Column("RequestedAt")]
         public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
 

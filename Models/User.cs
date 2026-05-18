@@ -48,15 +48,15 @@ namespace ThesisRepository.Models
         [Column("Department")]
         public string? Department { get; set; }
 
-        // BIT NOT NULL DEFAULT 1
+        // boolean NOT NULL DEFAULT 1
         [Column("IsActive")]
         public bool IsActive { get; set; } = true;
 
-        // BIT NOT NULL DEFAULT 0  — added via 2_AlterDatabase.sql if not present
+        // boolean NOT NULL DEFAULT 0  — added via 2_AlterDatabase.sql if not present
         [Column("IsApproved")]
         public bool IsApproved { get; set; } = false;
 
-        // DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+        // DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP
         [Column("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

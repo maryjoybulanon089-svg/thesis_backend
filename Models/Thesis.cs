@@ -76,7 +76,7 @@ namespace ThesisRepository.Models
         [Column("ApprovedBy")]
         public int? ApprovedBy { get; set; }
 
-        // DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+        // DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP
         [Column("UploadedAt")]
         public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
 
@@ -88,7 +88,7 @@ namespace ThesisRepository.Models
         [Column("RejectedAt")]
         public DateTime? RejectedAt { get; set; }
 
-        // BIT NOT NULL DEFAULT 0
+        // boolean NOT NULL DEFAULT 0
         [Column("IsDeleted")]
         public bool IsDeleted { get; set; } = false;
 

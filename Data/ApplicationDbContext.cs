@@ -36,7 +36,7 @@ namespace ThesisRepository.Data
                 entity.Property(u => u.Department).HasMaxLength(100);
                 entity.Property(u => u.IsActive).IsRequired().HasDefaultValue(true);
                 entity.Property(u => u.IsApproved).IsRequired().HasDefaultValue(false);
-                entity.Property(u => u.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(u => u.CreatedAt).IsRequired().HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
             // ── Theses ───────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ namespace ThesisRepository.Data
                 entity.Property(r => r.Id).HasMaxLength(450);
                 entity.Property(r => r.Email).IsRequired().HasMaxLength(255);
                 entity.Property(r => r.Status).IsRequired().HasMaxLength(50).HasDefaultValue("pending");
-                entity.Property(r => r.RequestedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(r => r.RequestedAt).IsRequired().HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(r => r.ProcessedBy).HasMaxLength(255);
             });
         }
