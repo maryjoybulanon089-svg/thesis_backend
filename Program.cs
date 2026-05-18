@@ -13,6 +13,10 @@ using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Read frontend URL from environment or configuration so deployments can override
+var frontendUrl = builder.Configuration["FrontendUrl"]
+                 ?? "https://thesis-qrve-im4m9e47r-maryjoybulanon22-4304s-projects.vercel.app";
+
 // ── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -25,12 +29,13 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// CORS – allow the Vite dev server and any common local ports
+// CORS – allow the Vite dev server, common local ports and the deployed Vercel frontend
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(
+                frontendUrl,
                 "http://localhost:5173",
                 "http://localhost:5174",
                 "http://localhost:3000",
@@ -117,13 +122,6 @@ if (app.Environment.IsDevelopment())
 var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 Directory.CreateDirectory(uploadsPath);
 
-// Serve uploaded files from /uploads when deployed (e.g. Render)
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/uploads"
-});
-
 // Trust proxy headers (X-Forwarded-For / X-Forwarded-Proto) when deployed behind a reverse proxy
 var forwardedOptions = new ForwardedHeadersOptions
 {
@@ -134,7 +132,16 @@ forwardedOptions.KnownNetworks.Clear();
 forwardedOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(forwardedOptions);
 
+// Apply CORS early so static files and other middleware include the CORS headers
 app.UseCors("AllowFrontend");
+
+// Serve uploaded files from /uploads when deployed (e.g. Render)
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<AdminSessionTimeoutMiddleware>();
