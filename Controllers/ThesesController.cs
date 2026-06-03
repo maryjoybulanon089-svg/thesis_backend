@@ -10,6 +10,7 @@ namespace ThesisRepository.Controllers
     public class ThesesController : ControllerBase
     {
         private readonly IThesisService _thesisService;
+        private readonly ILogger<ThesesController> _logger;
         private static readonly HashSet<string> AllowedResearchTypes =
             new(StringComparer.OrdinalIgnoreCase)
             {
@@ -20,9 +21,10 @@ namespace ThesisRepository.Controllers
 
         private const string ResearchTypeValidationMessage = "Invalid research type. Must be 'White Paper', 'Published Research', or 'Unpublished Paper'.";
 
-        public ThesesController(IThesisService thesisService)
+        public ThesesController(IThesisService thesisService, ILogger<ThesesController> logger)
         {
             _thesisService = thesisService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -46,7 +48,9 @@ namespace ThesisRepository.Controllers
             {
                 if (!string.IsNullOrWhiteSpace(researchType))
                 {
+                    _logger.LogInformation("SearchTheses received researchType='{researchTypeRaw}'", researchType);
                     var rt = researchType.Trim();
+                    _logger.LogInformation("SearchTheses normalized researchType='{researchType}' allowed={allowed}", rt, AllowedResearchTypes.Contains(rt));
                     if (!AllowedResearchTypes.Contains(rt))
                         return BadRequest(new { message = ResearchTypeValidationMessage });
                 }
@@ -85,7 +89,9 @@ namespace ThesisRepository.Controllers
                 if (string.IsNullOrWhiteSpace(request.ResearchType))
                     return BadRequest(new { message = "Research type is required." });
 
+                _logger.LogInformation("CreateThesis received researchTypeRaw='{researchTypeRaw}'", request.ResearchType);
                 var reqRt = request.ResearchType.Trim();
+                _logger.LogInformation("CreateThesis normalized researchType='{researchType}' allowed={allowed}", reqRt, AllowedResearchTypes.Contains(reqRt));
                 if (!AllowedResearchTypes.Contains(reqRt))
                     return BadRequest(new { message = ResearchTypeValidationMessage });
 
@@ -120,7 +126,9 @@ namespace ThesisRepository.Controllers
             {
                 if (!string.IsNullOrWhiteSpace(request.ResearchType))
                 {
+                    _logger.LogInformation("UpdateThesis received researchTypeRaw='{researchTypeRaw}'", request.ResearchType);
                     var reqRt2 = request.ResearchType.Trim();
+                    _logger.LogInformation("UpdateThesis normalized researchType='{researchType}' allowed={allowed}", reqRt2, AllowedResearchTypes.Contains(reqRt2));
                     if (!AllowedResearchTypes.Contains(reqRt2))
                         return BadRequest(new { message = ResearchTypeValidationMessage });
                 }
