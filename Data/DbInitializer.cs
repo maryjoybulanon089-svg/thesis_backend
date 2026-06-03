@@ -87,6 +87,45 @@ namespace ThesisRepository.Data
                 END $$;
             ");
 
+            // Doi column (Theses)
+            context.Database.ExecuteSqlRaw(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='Theses' AND column_name='Doi'
+                    ) THEN
+                        ALTER TABLE ""Theses"" ADD COLUMN ""Doi"" varchar(255);
+                    END IF;
+                END $$;
+            ");
+
+            // IeeeCitation column (Theses)
+            context.Database.ExecuteSqlRaw(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='Theses' AND column_name='IeeeCitation'
+                    ) THEN
+                        ALTER TABLE ""Theses"" ADD COLUMN ""IeeeCitation"" text;
+                    END IF;
+                END $$;
+            ");
+
+            // AcsCitation column (Theses)
+            context.Database.ExecuteSqlRaw(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='Theses' AND column_name='AcsCitation'
+                    ) THEN
+                        ALTER TABLE ""Theses"" ADD COLUMN ""AcsCitation"" text;
+                    END IF;
+                END $$;
+            ");
+
             // PasswordResetRequests table
             context.Database.ExecuteSqlRaw(@"
                 DO $$

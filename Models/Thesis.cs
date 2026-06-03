@@ -118,6 +118,19 @@ namespace ThesisRepository.Models
         [Column("ApaCitation")]
         public string? ApaCitation { get; set; }
 
+        // NVARCHAR(255) - nullable - DOI identifier
+        [MaxLength(255)]
+        [Column("Doi")]
+        public string? Doi { get; set; }
+
+        // NVARCHAR(MAX) - nullable - auto-generated IEEE citation
+        [Column("IeeeCitation")]
+        public string? IeeeCitation { get; set; }
+
+        // NVARCHAR(MAX) - nullable - auto-generated ACS citation
+        [Column("AcsCitation")]
+        public string? AcsCitation { get; set; }
+
         // NVARCHAR(50) - nullable - research type (White Paper or Published Research)
         [MaxLength(50)]
         [Column("ResearchType")]

@@ -100,7 +100,8 @@ namespace ThesisRepository.Services
                 UploadedAt      = DateTime.UtcNow,
                 MainAuthorEmail = request.MainAuthorEmail,
                 CoAuthorEmail   = request.CoAuthorEmail,
-                ResearchType    = request.ResearchType
+                ResearchType    = request.ResearchType,
+                Doi             = request.Doi
             };
 
             _context.Theses.Add(thesis);
@@ -150,6 +151,9 @@ namespace ThesisRepository.Services
             if (!string.IsNullOrEmpty(request.ResearchType))
                 thesis.ResearchType = request.ResearchType;
 
+            if (!string.IsNullOrEmpty(request.Doi))
+                thesis.Doi = request.Doi;
+
             if (!string.IsNullOrEmpty(request.Status))
             {
                 var prevStatus = thesis.Status;
@@ -160,6 +164,8 @@ namespace ThesisRepository.Services
                 {
                     thesis.ApprovedAt = DateTime.UtcNow;
                     thesis.ApaCitation = GenerateApaCitation(thesis);
+                    thesis.IeeeCitation = GenerateIeeeCitation(thesis);
+                    thesis.AcsCitation  = GenerateAcsCitation(thesis);
                 }
                 
                 // Track when it was rejected
@@ -335,10 +341,79 @@ namespace ThesisRepository.Services
                 ViewCount       = t.ViewCount,
                 DownloadCount   = t.DownloadCount,
                 ApaCitation     = t.ApaCitation,
+                Doi             = t.Doi,
+                IeeeCitation    = t.IeeeCitation,
+                AcsCitation     = t.AcsCitation,
                 MainAuthorEmail = t.MainAuthorEmail,
                 CoAuthorEmail   = t.CoAuthorEmail,
                 ResearchType    = t.ResearchType
             };
+        }
+
+        private static string GenerateIeeeCitation(Thesis thesis)
+        {
+            // IEEE: F. Lastname and F. Lastname, "Title," Dept., Univ., Year. DOI
+            var authors = thesis.Authors ?? "Unknown Author";
+            var formatted = FormatIeeeAuthors(authors);
+            var title = thesis.Title ?? "Untitled";
+            var dept = thesis.Department ?? "Unknown Dept.";
+            var year = thesis.Year > 0 ? thesis.Year.ToString() : DateTime.UtcNow.Year.ToString();
+
+            var doiPart = string.IsNullOrWhiteSpace(thesis.Doi) ? string.Empty : $" DOI: {thesis.Doi}";
+
+            return $"{formatted}, \"{title},\" {dept}, {year}.{doiPart}";
+        }
+
+        private static string FormatIeeeAuthors(string authorsRaw)
+        {
+            var authors = authorsRaw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(a => a.Trim())
+                .Where(a => !string.IsNullOrWhiteSpace(a))
+                .ToList();
+
+            if (authors.Count == 0)
+                return "Unknown Author";
+
+            // IEEE uses initials then last name: F. Lastname
+            var formatted = authors.Select(a =>
+            {
+                var parts = a.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 0) return a;
+                var last = parts[^1];
+                var initials = string.Join(".", parts.Take(parts.Length - 1).Select(p => p[0].ToString().ToUpper()));
+                if (!string.IsNullOrEmpty(initials)) initials += ".";
+                return $"{initials} {last}".Trim();
+            });
+
+            return string.Join(" and ", formatted);
+        }
+
+        private static string GenerateAcsCitation(Thesis thesis)
+        {
+            // ACS: Lastname, F.; Lastname, F. Title. Univ., Year. DOI
+            var authorsRaw = thesis.Authors ?? "Unknown Author";
+            var authors = authorsRaw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(a => a.Trim())
+                .Where(a => !string.IsNullOrWhiteSpace(a))
+                .ToList();
+
+            var formatted = authors.Select(a =>
+            {
+                var parts = a.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 0) return a;
+                var last = parts[^1];
+                var initials = string.Join("", parts.Take(parts.Length - 1).Select(p => p[0].ToString().ToUpper() + "."));
+                return string.IsNullOrEmpty(initials) ? last : $"{last}, {initials}";
+            });
+
+            var title = thesis.Title ?? "Untitled";
+            var univ = thesis.Department ?? "Unknown Univ.";
+            var year = thesis.Year > 0 ? thesis.Year.ToString() : DateTime.UtcNow.Year.ToString();
+            var doiPart = string.IsNullOrWhiteSpace(thesis.Doi) ? string.Empty : $" DOI: {thesis.Doi}";
+
+            return $"{string.Join("; ", formatted)}. {title}. {univ}, {year}.{doiPart}";
         }
 
         private static bool IsPdfAvailable(Thesis thesis)
