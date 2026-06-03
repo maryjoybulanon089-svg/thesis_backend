@@ -50,8 +50,10 @@ namespace ThesisRepository.Controllers
                 {
                     _logger.LogInformation("SearchTheses received researchType='{researchTypeRaw}'", researchType);
                     var rt = researchType.Trim();
-                    _logger.LogInformation("SearchTheses normalized researchType='{researchType}' allowed={allowed}", rt, AllowedResearchTypes.Contains(rt));
-                    if (!AllowedResearchTypes.Contains(rt))
+                    var rtLower = rt.ToLowerInvariant();
+                    var allowedRt = AllowedResearchTypes.Contains(rt) || rtLower.Contains("unpubl");
+                    _logger.LogInformation("SearchTheses normalized researchType='{researchType}' allowed={allowed}", rt, allowedRt);
+                    if (!allowedRt)
                         return BadRequest(new { message = ResearchTypeValidationMessage });
                 }
 
@@ -91,8 +93,10 @@ namespace ThesisRepository.Controllers
 
                 _logger.LogInformation("CreateThesis received researchTypeRaw='{researchTypeRaw}'", request.ResearchType);
                 var reqRt = request.ResearchType.Trim();
-                _logger.LogInformation("CreateThesis normalized researchType='{researchType}' allowed={allowed}", reqRt, AllowedResearchTypes.Contains(reqRt));
-                if (!AllowedResearchTypes.Contains(reqRt))
+                var reqRtLower = reqRt.ToLowerInvariant();
+                var allowedReq = AllowedResearchTypes.Contains(reqRt) || reqRtLower.Contains("unpubl");
+                _logger.LogInformation("CreateThesis normalized researchType='{researchType}' allowed={allowed}", reqRt, allowedReq);
+                if (!allowedReq)
                     return BadRequest(new { message = ResearchTypeValidationMessage });
 
                 // Validate DOI if provided
@@ -128,8 +132,10 @@ namespace ThesisRepository.Controllers
                 {
                     _logger.LogInformation("UpdateThesis received researchTypeRaw='{researchTypeRaw}'", request.ResearchType);
                     var reqRt2 = request.ResearchType.Trim();
-                    _logger.LogInformation("UpdateThesis normalized researchType='{researchType}' allowed={allowed}", reqRt2, AllowedResearchTypes.Contains(reqRt2));
-                    if (!AllowedResearchTypes.Contains(reqRt2))
+                    var reqRt2Lower = reqRt2.ToLowerInvariant();
+                    var allowedReq2 = AllowedResearchTypes.Contains(reqRt2) || reqRt2Lower.Contains("unpubl");
+                    _logger.LogInformation("UpdateThesis normalized researchType='{researchType}' allowed={allowed}", reqRt2, allowedReq2);
+                    if (!allowedReq2)
                         return BadRequest(new { message = ResearchTypeValidationMessage });
                 }
 
