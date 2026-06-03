@@ -84,6 +84,19 @@ namespace ThesisRepository.Controllers
                 if (!AllowedResearchTypes.Contains(request.ResearchType))
                     return BadRequest(new { message = "Invalid research type. Must be 'White Paper' or 'Published Research'." });
 
+                // Validate DOI if provided
+                if (!string.IsNullOrWhiteSpace(request.Doi))
+                {
+                    var normalized = ThesisRepository.Services.ThesisService.NormalizeDoi(request.Doi);
+                    if (normalized == null)
+                        return BadRequest(new { message = "Invalid DOI." });
+
+                    // Basic DOI pattern: starts with 10.<publisher id>/<suffix>
+                    var doiPattern = new System.Text.RegularExpressions.Regex("^10\\.\\d{4,9}/\\S+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (!doiPattern.IsMatch(normalized))
+                        return BadRequest(new { message = "Invalid DOI format." });
+                }
+
                 var thesis = await _thesisService.CreateThesis(request);
                 return Ok(thesis);
             }
@@ -104,6 +117,18 @@ namespace ThesisRepository.Controllers
                     !AllowedResearchTypes.Contains(request.ResearchType))
                 {
                     return BadRequest(new { message = "Invalid research type. Must be 'White Paper' or 'Published Research'." });
+                }
+
+                // Validate DOI if provided
+                if (!string.IsNullOrWhiteSpace(request.Doi))
+                {
+                    var normalized = ThesisRepository.Services.ThesisService.NormalizeDoi(request.Doi);
+                    if (normalized == null)
+                        return BadRequest(new { message = "Invalid DOI." });
+
+                    var doiPattern = new System.Text.RegularExpressions.Regex("^10\\.\\d{4,9}/\\S+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (!doiPattern.IsMatch(normalized))
+                        return BadRequest(new { message = "Invalid DOI format." });
                 }
 
                 var thesis = await _thesisService.UpdateThesis(id, request);

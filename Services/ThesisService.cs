@@ -84,6 +84,9 @@ namespace ThesisRepository.Services
             // Parse uploader's UserId string → int
             int? uploadedById = int.TryParse(request.UploadedBy, out var uid) ? uid : (int?)null;
 
+            // Normalize DOI before persisting
+            var normalizedDoi = NormalizeDoi(request.Doi);
+
             var thesis = new Thesis
             {
                 Title           = request.Title,
@@ -101,7 +104,7 @@ namespace ThesisRepository.Services
                 MainAuthorEmail = request.MainAuthorEmail,
                 CoAuthorEmail   = request.CoAuthorEmail,
                 ResearchType    = request.ResearchType,
-                Doi             = request.Doi
+                Doi             = normalizedDoi
             };
 
             _context.Theses.Add(thesis);
@@ -152,7 +155,7 @@ namespace ThesisRepository.Services
                 thesis.ResearchType = request.ResearchType;
 
             if (!string.IsNullOrEmpty(request.Doi))
-                thesis.Doi = request.Doi;
+                thesis.Doi = NormalizeDoi(request.Doi);
 
             if (!string.IsNullOrEmpty(request.Status))
             {
@@ -347,6 +350,7 @@ namespace ThesisRepository.Services
                 MainAuthorEmail = t.MainAuthorEmail,
                 CoAuthorEmail   = t.CoAuthorEmail,
                 ResearchType    = t.ResearchType
+                ,IsPublished     = string.Equals(t.Status, "approved", StringComparison.Ordinal)
             };
         }
 
@@ -414,6 +418,31 @@ namespace ThesisRepository.Services
             var doiPart = string.IsNullOrWhiteSpace(thesis.Doi) ? string.Empty : $" DOI: {thesis.Doi}";
 
             return $"{string.Join("; ", formatted)}. {title}. {univ}, {year}.{doiPart}";
+        }
+
+        // Normalize DOI input: trim, remove common prefixes, return null for empty/invalid
+        public static string? NormalizeDoi(string? doi)
+        {
+            if (string.IsNullOrWhiteSpace(doi))
+                return null;
+
+            var d = doi.Trim();
+
+            // Remove common DOI URL prefixes (case-insensitive)
+            if (d.StartsWith("https://doi.org/", StringComparison.OrdinalIgnoreCase))
+                d = d.Substring("https://doi.org/".Length);
+            else if (d.StartsWith("http://doi.org/", StringComparison.OrdinalIgnoreCase))
+                d = d.Substring("http://doi.org/".Length);
+            else if (d.StartsWith("doi:", StringComparison.OrdinalIgnoreCase))
+                d = d.Substring("doi:".Length);
+
+            d = d.Trim();
+
+            // Basic length validation
+            if (d.Length == 0 || d.Length > 255)
+                return null;
+
+            return d;
         }
 
         private static bool IsPdfAvailable(Thesis thesis)

@@ -176,6 +176,8 @@ namespace ThesisRepository.DTOs
 
         /// <summary>Research type (White Paper or Published Research).</summary>
         public string? ResearchType { get; set; }
+
+        public string? Doi { get; set; }
     }
 
     public class UploadPdfDto
