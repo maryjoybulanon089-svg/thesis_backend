@@ -53,8 +53,11 @@ namespace ThesisRepository.DTOs
         /// <summary>Co-author email address (optional).</summary>
         public string? CoAuthorEmail { get; set; }
 
-        /// <summary>Research type (White Paper or Published Research).</summary>
+        /// <summary>Research type (White Paper, Published Research, or Unpublished Paper).</summary>
         public string? ResearchType { get; set; }
+
+        /// <summary>Derived flag: true when status == "approved".</summary>
+        public bool IsPublished { get; set; }
 
         /// <summary>Digital Object Identifier (DOI) for the thesis/article.</summary>
         public string? Doi { get; set; }
@@ -174,10 +177,11 @@ namespace ThesisRepository.DTOs
         /// <summary>Co-author email address.</summary>
         public string? CoAuthorEmail { get; set; }
 
-        /// <summary>Research type (White Paper or Published Research).</summary>
+        /// <summary>Research type (White Paper, Published Research, or Unpublished Paper).</summary>
         public string? ResearchType { get; set; }
 
-        public string? Doi { get; set; }
+        /// <summary>Derived flag: true when status == "approved".</summary>
+        public bool IsPublished { get; set; }
     }
 
     public class UploadPdfDto
