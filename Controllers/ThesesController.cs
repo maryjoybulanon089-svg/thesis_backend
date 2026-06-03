@@ -14,7 +14,8 @@ namespace ThesisRepository.Controllers
             new(StringComparer.Ordinal)
             {
                 "White Paper",
-                "Published Research"
+                "Published Research",
+                "Unpublished Paper"
             };
 
         public ThesesController(IThesisService thesisService)
@@ -44,7 +45,7 @@ namespace ThesisRepository.Controllers
                 if (!string.IsNullOrWhiteSpace(researchType) &&
                     !AllowedResearchTypes.Contains(researchType))
                 {
-                    return BadRequest(new { message = "Invalid research type. Must be 'White Paper' or 'Published Research'." });
+                    return BadRequest(new { message = "Invalid research type. Must be 'White Paper', 'Published Research', or 'Unpublished Paper'." });
                 }
 
                 var theses = await _thesisService.SearchTheses(query, department, fieldOfResearch, year, status, researchType);
@@ -82,7 +83,7 @@ namespace ThesisRepository.Controllers
                     return BadRequest(new { message = "Research type is required." });
 
                 if (!AllowedResearchTypes.Contains(request.ResearchType))
-                    return BadRequest(new { message = "Invalid research type. Must be 'White Paper' or 'Published Research'." });
+                    return BadRequest(new { message = "Invalid research type. Must be 'White Paper', 'Published Research', or 'Unpublished Paper'." });
 
                 // Validate DOI if provided
                 if (!string.IsNullOrWhiteSpace(request.Doi))
@@ -116,7 +117,7 @@ namespace ThesisRepository.Controllers
                 if (!string.IsNullOrWhiteSpace(request.ResearchType) &&
                     !AllowedResearchTypes.Contains(request.ResearchType))
                 {
-                    return BadRequest(new { message = "Invalid research type. Must be 'White Paper' or 'Published Research'." });
+                    return BadRequest(new { message = "Invalid research type. Must be 'White Paper', 'Published Research', or 'Unpublished Paper'." });
                 }
 
                 // Validate DOI if provided
