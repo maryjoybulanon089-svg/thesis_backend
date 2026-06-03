@@ -11,12 +11,14 @@ namespace ThesisRepository.Controllers
     {
         private readonly IThesisService _thesisService;
         private static readonly HashSet<string> AllowedResearchTypes =
-            new(StringComparer.Ordinal)
+            new(StringComparer.OrdinalIgnoreCase)
             {
                 "White Paper",
                 "Published Research",
                 "Unpublished Paper"
             };
+
+        private const string ResearchTypeValidationMessage = "Invalid research type. Must be 'White Paper', 'Published Research', or 'Unpublished Paper'.";
 
         public ThesesController(IThesisService thesisService)
         {
@@ -42,10 +44,11 @@ namespace ThesisRepository.Controllers
         {
             try
             {
-                if (!string.IsNullOrWhiteSpace(researchType) &&
-                    !AllowedResearchTypes.Contains(researchType))
+                if (!string.IsNullOrWhiteSpace(researchType))
                 {
-                    return BadRequest(new { message = "Invalid research type. Must be 'White Paper', 'Published Research', or 'Unpublished Paper'." });
+                    var rt = researchType.Trim();
+                    if (!AllowedResearchTypes.Contains(rt))
+                        return BadRequest(new { message = ResearchTypeValidationMessage });
                 }
 
                 var theses = await _thesisService.SearchTheses(query, department, fieldOfResearch, year, status, researchType);
@@ -82,8 +85,9 @@ namespace ThesisRepository.Controllers
                 if (string.IsNullOrWhiteSpace(request.ResearchType))
                     return BadRequest(new { message = "Research type is required." });
 
-                if (!AllowedResearchTypes.Contains(request.ResearchType))
-                    return BadRequest(new { message = "Invalid research type. Must be 'White Paper', 'Published Research', or 'Unpublished Paper'." });
+                var reqRt = request.ResearchType.Trim();
+                if (!AllowedResearchTypes.Contains(reqRt))
+                    return BadRequest(new { message = ResearchTypeValidationMessage });
 
                 // Validate DOI if provided
                 if (!string.IsNullOrWhiteSpace(request.Doi))
@@ -114,10 +118,11 @@ namespace ThesisRepository.Controllers
         {
             try
             {
-                if (!string.IsNullOrWhiteSpace(request.ResearchType) &&
-                    !AllowedResearchTypes.Contains(request.ResearchType))
+                if (!string.IsNullOrWhiteSpace(request.ResearchType))
                 {
-                    return BadRequest(new { message = "Invalid research type. Must be 'White Paper', 'Published Research', or 'Unpublished Paper'." });
+                    var reqRt2 = request.ResearchType.Trim();
+                    if (!AllowedResearchTypes.Contains(reqRt2))
+                        return BadRequest(new { message = ResearchTypeValidationMessage });
                 }
 
                 // Validate DOI if provided
