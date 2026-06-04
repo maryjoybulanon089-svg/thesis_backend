@@ -126,6 +126,19 @@ namespace ThesisRepository.Data
                 END $$;
             ");
 
+            // PdfData column (Theses) - store binary PDF in DB
+            context.Database.ExecuteSqlRaw(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='Theses' AND column_name='PdfData'
+                    ) THEN
+                        ALTER TABLE ""Theses"" ADD COLUMN ""PdfData"" bytea;
+                    END IF;
+                END $$;
+            ");
+
             // PasswordResetRequests table
             context.Database.ExecuteSqlRaw(@"
                 DO $$

@@ -133,6 +133,9 @@ namespace ThesisRepository.DTOs
         /// <summary>FilePath value from DB, exposed as pdfUrl to frontend.</summary>
         public string? PdfUrl { get; set; }
 
+        /// <summary>Base64-encoded PDF data when stored in DB (nullable).</summary>
+        public string? PdfData { get; set; }
+
         [Required]
         public string Status { get; set; } = string.Empty;
 

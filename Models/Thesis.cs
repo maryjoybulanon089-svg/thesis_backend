@@ -62,6 +62,10 @@ namespace ThesisRepository.Models
         [Column("FilePath")]
         public string? FilePath { get; set; }
 
+        // BYTEA - nullable - store PDF binary data directly in DB so files persist across deployments
+        [Column("PdfData")]
+        public byte[]? PdfData { get; set; }
+
         // NVARCHAR(50) NOT NULL DEFAULT 'pending'
         [Required]
         [MaxLength(50)]

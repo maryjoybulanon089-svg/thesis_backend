@@ -107,6 +107,26 @@ namespace ThesisRepository.Services
                 Doi             = normalizedDoi
             };
 
+            // If PDF data supplied in request (base64 or data URL), store in DB
+            if (!string.IsNullOrWhiteSpace(request.PdfData))
+            {
+                var base64 = request.PdfData;
+                var comma = base64.IndexOf(',');
+                if (comma >= 0)
+                    base64 = base64[(comma + 1)..];
+
+                try
+                {
+                    thesis.PdfData = Convert.FromBase64String(base64);
+                    // Clear FilePath to avoid filesystem dependency
+                    thesis.FilePath = null;
+                }
+                catch
+                {
+                    // ignore invalid base64 -> keep FilePath if provided
+                }
+            }
+
             _context.Theses.Add(thesis);
             await _context.SaveChangesAsync();
 
@@ -220,7 +240,7 @@ namespace ThesisRepository.Services
 
         public async Task<string> UploadPdf(string fileData)
         {
-            // Create the uploads directory alongside the running executable
+            // Legacy: keep writing to filesystem, but prefer storing in DB via Create/Update endpoints.
             var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
             Directory.CreateDirectory(uploadsDir);
 
@@ -242,7 +262,10 @@ namespace ThesisRepository.Services
 
         public async Task<string?> GetPdfData(string fileId)
         {
-            // fileId is the relative path stored in FilePath (e.g. "uploads/thesis_XXXXX.pdf")
+            // If fileId is null or empty, caller might want PdfData from DB — this method fetches by path only.
+            if (string.IsNullOrEmpty(fileId))
+                return null;
+
             var filePath = Path.Combine(Directory.GetCurrentDirectory(), fileId);
             if (!File.Exists(filePath))
                 return null;
@@ -334,6 +357,7 @@ namespace ThesisRepository.Services
                 FieldOfResearch = t.FieldOfResearch,
                 Year            = t.Year,
                 PdfUrl          = t.FilePath,          // FilePath → PdfUrl for frontend
+                PdfData         = t.PdfData == null ? null : $"data:application/pdf;base64,{Convert.ToBase64String(t.PdfData)}",
                 Status          = t.Status,
                 UploadedBy      = t.UploadedBy?.ToString(),
                 ApprovedBy      = t.ApprovedBy?.ToString(),
