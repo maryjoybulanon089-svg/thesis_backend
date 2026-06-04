@@ -31,7 +31,9 @@ namespace ThesisRepository.Services
                     available.Add(t);
             }
 
-            return available.Select(MapToDto).ToList();
+            var dtoTasks = available.Select(MapToDtoAsync);
+            var dtos = await Task.WhenAll(dtoTasks);
+            return dtos.ToList();
         }
 
         public async Task<ThesisDto?> GetThesisById(string id)
@@ -45,7 +47,7 @@ namespace ThesisRepository.Services
             if (thesis == null || !await IsPdfAvailable(thesis))
                 return null;
 
-            return MapToDto(thesis);
+            return await MapToDtoAsync(thesis);
         }
 
         public async Task<List<ThesisDto>> SearchTheses(string? query, string? department, string? fieldOfResearch, int? year, string? status = "approved", string? researchType = null)
@@ -88,7 +90,9 @@ namespace ThesisRepository.Services
                     available.Add(t);
             }
 
-            return available.Select(MapToDto).ToList();
+            var dtoTasks = available.Select(MapToDtoAsync);
+            var dtos = await Task.WhenAll(dtoTasks);
+            return dtos.ToList();
         }
 
         // ── Write ────────────────────────────────────────────────────────────────
@@ -383,7 +387,7 @@ namespace ThesisRepository.Services
             return $"{lastName}, {string.Join(" ", initials)}";
         }
 
-        private static ThesisDto MapToDto(Thesis t)
+        private async Task<ThesisDto> MapToDtoAsync(Thesis t)
         {
             string[] keywords;
             try
@@ -399,6 +403,28 @@ namespace ThesisRepository.Services
 
             var updatedAt = t.ApprovedAt ?? t.UploadedAt;
 
+            // Determine PdfData from either Thesis.PdfData or UploadedFiles table
+            string? pdfData = null;
+            if (t.PdfData != null && t.PdfData.Length > 0)
+            {
+                pdfData = $"data:application/pdf;base64,{Convert.ToBase64String(t.PdfData)}";
+            }
+            else if (!string.IsNullOrWhiteSpace(t.FilePath))
+            {
+                try
+                {
+                    var uploaded = await _context.UploadedFiles.FindAsync(t.FilePath);
+                    if (uploaded != null && uploaded.Data != null && uploaded.Data.Length > 0)
+                    {
+                        pdfData = $"data:{uploaded.FileType ?? "application/pdf"};base64,{Convert.ToBase64String(uploaded.Data)}";
+                    }
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+
             return new ThesisDto
             {
                 Id              = t.ThesisId.ToString(),
@@ -411,7 +437,7 @@ namespace ThesisRepository.Services
                 FieldOfResearch = t.FieldOfResearch,
                 Year            = t.Year,
                 PdfUrl          = t.FilePath,          // FilePath → PdfUrl for frontend (may contain UploadedFile Id)
-                PdfData         = t.PdfData == null ? null : $"data:application/pdf;base64,{Convert.ToBase64String(t.PdfData)}",
+                PdfData         = pdfData,
                 PdfFileId       = t.FilePath,
                 Status          = t.Status,
                 UploadedBy      = t.UploadedBy?.ToString(),
