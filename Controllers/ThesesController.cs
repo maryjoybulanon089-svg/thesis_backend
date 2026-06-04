@@ -228,14 +228,26 @@ namespace ThesisRepository.Controllers
             try
             {
                 var thesis = await _thesisService.GetThesisById(id);
-                if (thesis == null || string.IsNullOrEmpty(thesis.PdfUrl))
-                    return NotFound(new { message = "Thesis or PDF path not found." });
+                if (thesis == null)
+                    return NotFound(new { message = "Thesis not found" });
 
-                var data = await _thesisService.GetPdfData(thesis.PdfUrl);
-                if (data == null)
-                    return NotFound(new { message = "PDF file not found on server." });
+                // Prefer filesystem-stored PDF when available
+                if (!string.IsNullOrEmpty(thesis.PdfUrl))
+                {
+                    var data = await _thesisService.GetPdfData(thesis.PdfUrl);
+                    if (data == null)
+                        return NotFound(new { message = "PDF file not found on server." });
 
-                return Ok(new { data });
+                    return Ok(new { data });
+                }
+
+                // Fall back to DB-stored PDF data (data URL) if present in the thesis DTO
+                if (!string.IsNullOrEmpty(thesis.PdfData))
+                {
+                    return Ok(new { data = thesis.PdfData });
+                }
+
+                return NotFound(new { message = "Thesis or PDF not found." });
             }
             catch (Exception ex)
             {

@@ -262,17 +262,33 @@ namespace ThesisRepository.Services
 
         public async Task<string?> GetPdfData(string fileId)
         {
-            // If fileId is null or empty, caller might want PdfData from DB — this method fetches by path only.
+            // If fileId is null or empty, nothing to do
             if (string.IsNullOrEmpty(fileId))
                 return null;
 
             var filePath = Path.Combine(Directory.GetCurrentDirectory(), fileId);
-            if (!File.Exists(filePath))
-                return null;
+            if (File.Exists(filePath))
+            {
+                var bytes = await File.ReadAllBytesAsync(filePath);
+                // Return a data-URL so the frontend iframe can render it directly
+                return $"data:application/pdf;base64,{Convert.ToBase64String(bytes)}";
+            }
 
-            var bytes = await File.ReadAllBytesAsync(filePath);
-            // Return a data-URL so the frontend iframe can render it directly
-            return $"data:application/pdf;base64,{Convert.ToBase64String(bytes)}";
+            // Fallback: if file not found on disk, try to find a Thesis that references this FilePath and has PdfData stored in DB
+            try
+            {
+                var thesis = await _context.Theses.FirstOrDefaultAsync(t => t.FilePath == fileId && t.PdfData != null);
+                if (thesis != null && thesis.PdfData != null && thesis.PdfData.Length > 0)
+                {
+                    return $"data:application/pdf;base64,{Convert.ToBase64String(thesis.PdfData)}";
+                }
+            }
+            catch
+            {
+                // ignore DB errors and return null
+            }
+
+            return null;
         }
 
         // ── Mapping ──────────────────────────────────────────────────────────────
@@ -471,11 +487,18 @@ namespace ThesisRepository.Services
 
         private static bool IsPdfAvailable(Thesis thesis)
         {
-            if (string.IsNullOrWhiteSpace(thesis.FilePath))
-                return false;
+            // Consider PDF available if either a filesystem path exists or PDF binary is stored in DB.
+            if (!string.IsNullOrWhiteSpace(thesis.FilePath))
+            {
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), thesis.FilePath);
+                if (File.Exists(filePath))
+                    return true;
+            }
 
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), thesis.FilePath);
-            return File.Exists(filePath);
+            if (thesis.PdfData != null && thesis.PdfData.Length > 0)
+                return true;
+
+            return false;
         }
     }
 }
