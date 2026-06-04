@@ -263,7 +263,6 @@ namespace ThesisRepository.Controllers
             try
             {
                 var thesis = await _thesisService.GetThesisById(id);
-                var thesis = await _thesisService.GetThesisById(id);
                 if (thesis == null || string.IsNullOrEmpty(thesis.PdfUrl))
                     return NotFound(new { message = "Thesis or PDF path not found." });
 
