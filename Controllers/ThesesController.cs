@@ -195,6 +195,7 @@ namespace ThesisRepository.Controllers
             try
             {
                 var fileId = await _thesisService.UploadPdf(request.FileData);
+                // return the db id
                 return Ok(new { fileId });
             }
             catch (Exception ex)
@@ -261,6 +262,7 @@ namespace ThesisRepository.Controllers
         {
             try
             {
+                var thesis = await _thesisService.GetThesisById(id);
                 var thesis = await _thesisService.GetThesisById(id);
                 if (thesis == null || string.IsNullOrEmpty(thesis.PdfUrl))
                     return NotFound(new { message = "Thesis or PDF path not found." });

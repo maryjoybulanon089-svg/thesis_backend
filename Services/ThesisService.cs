@@ -117,9 +117,23 @@ namespace ThesisRepository.Services
 
                 try
                 {
-                    thesis.PdfData = Convert.FromBase64String(base64);
-                    // Clear FilePath to avoid filesystem dependency
-                    thesis.FilePath = null;
+                    var bytes = Convert.FromBase64String(base64);
+
+                    // Create UploadedFile record and reference it
+                    var uploaded = new Models.UploadedFile
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        FileName = request.PdfUrl ?? $"thesis_{DateTime.UtcNow.Ticks}.pdf",
+                        FileType = "application/pdf",
+                        UploadedAt = DateTime.UtcNow,
+                        Data = bytes
+                    };
+
+                    _context.UploadedFiles.Add(uploaded);
+                    await _context.SaveChangesAsync();
+
+                    // Reference uploaded file id via FilePath (legacy) for compatibility
+                    thesis.FilePath = uploaded.Id;
                 }
                 catch
                 {
@@ -240,52 +254,62 @@ namespace ThesisRepository.Services
 
         public async Task<string> UploadPdf(string fileData)
         {
-            // Legacy: keep writing to filesystem, but prefer storing in DB via Create/Update endpoints.
-            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
-            Directory.CreateDirectory(uploadsDir);
-
-            var fileName = $"thesis_{DateTime.UtcNow.Ticks}.pdf";
-            var filePath = Path.Combine(uploadsDir, fileName);
-
-            // Strip the data-URL prefix when present (e.g. "data:application/pdf;base64,...")
+            // Store uploaded PDF directly in DB (UploadedFiles table) and return generated Id
             var base64Data = fileData;
             var commaIndex = fileData.IndexOf(',');
             if (commaIndex >= 0)
                 base64Data = fileData[(commaIndex + 1)..];
 
             var bytes = Convert.FromBase64String(base64Data);
-            await File.WriteAllBytesAsync(filePath, bytes);
 
-            // Return the relative path stored in the FilePath column
-            return $"uploads/{fileName}";
+            var id = Guid.NewGuid().ToString();
+            var uploaded = new Models.UploadedFile
+            {
+                Id = id,
+                FileName = $"thesis_{DateTime.UtcNow.Ticks}.pdf",
+                FileType = "application/pdf",
+                UploadedAt = DateTime.UtcNow,
+                Data = bytes
+            };
+
+            _context.UploadedFiles.Add(uploaded);
+            await _context.SaveChangesAsync();
+
+            return id;
         }
 
         public async Task<string?> GetPdfData(string fileId)
         {
-            // If fileId is null or empty, nothing to do
             if (string.IsNullOrEmpty(fileId))
                 return null;
 
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), fileId);
-            if (File.Exists(filePath))
-            {
-                var bytes = await File.ReadAllBytesAsync(filePath);
-                // Return a data-URL so the frontend iframe can render it directly
-                return $"data:application/pdf;base64,{Convert.ToBase64String(bytes)}";
-            }
-
-            // Fallback: if file not found on disk, try to find a Thesis that references this FilePath and has PdfData stored in DB
+            // First try to load from UploadedFiles table (primary storage now)
             try
             {
-                var thesis = await _context.Theses.FirstOrDefaultAsync(t => t.FilePath == fileId && t.PdfData != null);
-                if (thesis != null && thesis.PdfData != null && thesis.PdfData.Length > 0)
+                var uploaded = await _context.UploadedFiles.FindAsync(fileId);
+                if (uploaded != null && uploaded.Data != null && uploaded.Data.Length > 0)
                 {
-                    return $"data:application/pdf;base64,{Convert.ToBase64String(thesis.PdfData)}";
+                    return $"data:{uploaded.FileType ?? "application/pdf"};base64,{Convert.ToBase64String(uploaded.Data)}";
                 }
             }
             catch
             {
-                // ignore DB errors and return null
+                // ignore
+            }
+
+            // Backwards compatibility: if fileId is a filesystem path
+            try
+            {
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), fileId);
+                if (File.Exists(filePath))
+                {
+                    var bytes = await File.ReadAllBytesAsync(filePath);
+                    return $"data:application/pdf;base64,{Convert.ToBase64String(bytes)}";
+                }
+            }
+            catch
+            {
+                // ignore
             }
 
             return null;
@@ -372,8 +396,9 @@ namespace ThesisRepository.Services
                 Department      = t.Department,
                 FieldOfResearch = t.FieldOfResearch,
                 Year            = t.Year,
-                PdfUrl          = t.FilePath,          // FilePath → PdfUrl for frontend
+                PdfUrl          = t.FilePath,          // FilePath → PdfUrl for frontend (may contain UploadedFile Id)
                 PdfData         = t.PdfData == null ? null : $"data:application/pdf;base64,{Convert.ToBase64String(t.PdfData)}",
+                PdfFileId       = t.FilePath,
                 Status          = t.Status,
                 UploadedBy      = t.UploadedBy?.ToString(),
                 ApprovedBy      = t.ApprovedBy?.ToString(),

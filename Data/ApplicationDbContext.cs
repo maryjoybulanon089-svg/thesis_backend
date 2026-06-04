@@ -12,6 +12,7 @@ namespace ThesisRepository.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<Thesis> Theses { get; set; }
+        public DbSet<UploadedFile> UploadedFiles { get; set; }
         public DbSet<PasswordResetRequest> PasswordResetRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

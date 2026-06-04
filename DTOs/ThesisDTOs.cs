@@ -136,6 +136,9 @@ namespace ThesisRepository.DTOs
         /// <summary>Base64-encoded PDF data when stored in DB (nullable).</summary>
         public string? PdfData { get; set; }
 
+        /// <summary>If PDF is stored as UploadedFile in DB, this is the file id.</summary>
+        public string? PdfFileId { get; set; }
+
         [Required]
         public string Status { get; set; } = string.Empty;
 

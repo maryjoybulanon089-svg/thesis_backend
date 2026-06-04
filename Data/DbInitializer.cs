@@ -158,6 +158,25 @@ namespace ThesisRepository.Data
                     END IF;
                 END $$;
             ");
+
+            // UploadedFiles table for storing PDFs and other uploaded binaries
+            context.Database.ExecuteSqlRaw(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_name='UploadedFiles'
+                    ) THEN
+                        CREATE TABLE ""UploadedFiles"" (
+                            ""Id"" varchar(450) PRIMARY KEY,
+                            ""FileName"" varchar(255),
+                            ""FileType"" varchar(100),
+                            ""UploadedAt"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            ""Data"" bytea
+                        );
+                    END IF;
+                END $$;
+            ");
         }
 
         // ─────────────────────────────────────────────
