@@ -24,7 +24,14 @@ namespace ThesisRepository.Services
                 .OrderByDescending(t => t.UploadedAt)
                 .ToListAsync();
 
-            return theses.Where(IsPdfAvailable).Select(MapToDto).ToList();
+            var available = new List<Thesis>();
+            foreach (var t in theses)
+            {
+                if (await IsPdfAvailable(t))
+                    available.Add(t);
+            }
+
+            return available.Select(MapToDto).ToList();
         }
 
         public async Task<ThesisDto?> GetThesisById(string id)
@@ -35,7 +42,7 @@ namespace ThesisRepository.Services
             var thesis = await _context.Theses
                 .FirstOrDefaultAsync(t => t.ThesisId == intId && !t.IsDeleted);
                 
-            if (thesis == null || !IsPdfAvailable(thesis))
+            if (thesis == null || !await IsPdfAvailable(thesis))
                 return null;
 
             return MapToDto(thesis);
@@ -74,7 +81,14 @@ namespace ThesisRepository.Services
                 .OrderByDescending(t => t.UploadedAt)
                 .ToListAsync();
 
-            return theses.Where(IsPdfAvailable).Select(MapToDto).ToList();
+            var available = new List<Thesis>();
+            foreach (var t in theses)
+            {
+                if (await IsPdfAvailable(t))
+                    available.Add(t);
+            }
+
+            return available.Select(MapToDto).ToList();
         }
 
         // ── Write ────────────────────────────────────────────────────────────────
@@ -510,14 +524,34 @@ namespace ThesisRepository.Services
             return d;
         }
 
-        private static bool IsPdfAvailable(Thesis thesis)
+        private async Task<bool> IsPdfAvailable(Thesis thesis)
         {
-            // Consider PDF available if either a filesystem path exists or PDF binary is stored in DB.
+            // Consider PDF available if either a filesystem path exists, PDF binary is stored in the Thesis row,
+            // or an UploadedFile record exists for the FilePath (new DB storage).
             if (!string.IsNullOrWhiteSpace(thesis.FilePath))
             {
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), thesis.FilePath);
-                if (File.Exists(filePath))
-                    return true;
+                // Check if FilePath refers to an UploadedFiles id in DB
+                try
+                {
+                    var uploaded = await _context.UploadedFiles.FindAsync(thesis.FilePath);
+                    if (uploaded != null && uploaded.Data != null && uploaded.Data.Length > 0)
+                        return true;
+                }
+                catch
+                {
+                    // ignore DB lookup errors and fall back to filesystem check
+                }
+
+                try
+                {
+                    var filePath = Path.Combine(Directory.GetCurrentDirectory(), thesis.FilePath);
+                    if (File.Exists(filePath))
+                        return true;
+                }
+                catch
+                {
+                    // ignore
+                }
             }
 
             if (thesis.PdfData != null && thesis.PdfData.Length > 0)
