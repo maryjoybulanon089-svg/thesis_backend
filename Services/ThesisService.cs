@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using ThesisRepository.Data;
+using Microsoft.AspNetCore.Hosting;
 using ThesisRepository.DTOs;
 using ThesisRepository.Models;
 
@@ -9,10 +10,19 @@ namespace ThesisRepository.Services
     public class ThesisService : IThesisService
     {
         private readonly ApplicationDbContext _context;
+        private readonly string _uploadsDir;
 
-        public ThesisService(ApplicationDbContext context)
+        public ThesisService(ApplicationDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _uploadsDir = Path.Combine(env.ContentRootPath, "uploads");
+            Directory.CreateDirectory(_uploadsDir);
+        }
+
+        // Synchronous wrapper used by some callers
+        private ThesisDto MapToDto(Thesis t)
+        {
+            return MapToDtoAsync(t).GetAwaiter().GetResult();
         }
 
         // ── Read ─────────────────────────────────────────────────────────────────
@@ -272,7 +282,7 @@ namespace ThesisRepository.Services
 
         public async Task<string> UploadPdf(string fileData)
         {
-            // Store uploaded PDF directly in DB (UploadedFiles table) and return generated Id
+            // Store uploaded PDF on filesystem under the app content root /uploads and return a relative path
             var base64Data = fileData;
             var commaIndex = fileData.IndexOf(',');
             if (commaIndex >= 0)
@@ -280,20 +290,12 @@ namespace ThesisRepository.Services
 
             var bytes = Convert.FromBase64String(base64Data);
 
-            var id = Guid.NewGuid().ToString();
-            var uploaded = new Models.UploadedFile
-            {
-                Id = id,
-                FileName = $"thesis_{DateTime.UtcNow.Ticks}.pdf",
-                FileType = "application/pdf",
-                UploadedAt = DateTime.UtcNow,
-                Data = bytes
-            };
+            var fileName = $"thesis_{DateTime.UtcNow.Ticks}.pdf";
+            var filePath = Path.Combine(_uploadsDir, fileName);
+            await File.WriteAllBytesAsync(filePath, bytes);
 
-            _context.UploadedFiles.Add(uploaded);
-            await _context.SaveChangesAsync();
-
-            return id;
+            // Return a relative path suitable for URLs (e.g. "uploads/filename.pdf")
+            return Path.Combine("uploads", fileName).Replace("\\", "/");
         }
 
         public async Task<string?> GetPdfData(string fileId)
@@ -315,10 +317,11 @@ namespace ThesisRepository.Services
                 // ignore
             }
 
-            // Backwards compatibility: if fileId is a filesystem path
+            // Backwards compatibility / filesystem storage under app content root
             try
             {
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), fileId);
+                var safeName = Path.GetFileName(fileId ?? string.Empty);
+                var filePath = Path.Combine(_uploadsDir, safeName);
                 if (File.Exists(filePath))
                 {
                     var bytes = await File.ReadAllBytesAsync(filePath);

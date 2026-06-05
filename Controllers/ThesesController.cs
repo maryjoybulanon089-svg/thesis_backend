@@ -232,7 +232,17 @@ namespace ThesisRepository.Controllers
                 if (thesis == null)
                     return NotFound(new { message = "Thesis not found" });
 
-                // Prefer filesystem-stored PDF when available
+                // If the thesis references an UploadedFile id, use it to fetch the PDF data
+                if (!string.IsNullOrEmpty(thesis.PdfFileId))
+                {
+                    var data = await _thesisService.GetPdfData(thesis.PdfFileId);
+                    if (data == null)
+                        return NotFound(new { message = "PDF file not found on server." });
+
+                    return Ok(new { data });
+                }
+
+                // If PdfUrl contains a filesystem path or direct URL, try to fetch via service
                 if (!string.IsNullOrEmpty(thesis.PdfUrl))
                 {
                     var data = await _thesisService.GetPdfData(thesis.PdfUrl);
@@ -242,11 +252,9 @@ namespace ThesisRepository.Controllers
                     return Ok(new { data });
                 }
 
-                // Fall back to DB-stored PDF data (data URL) if present in the thesis DTO
+                // Fall back to PdfData included in DTO
                 if (!string.IsNullOrEmpty(thesis.PdfData))
-                {
                     return Ok(new { data = thesis.PdfData });
-                }
 
                 return NotFound(new { message = "Thesis or PDF not found." });
             }
@@ -263,12 +271,26 @@ namespace ThesisRepository.Controllers
             try
             {
                 var thesis = await _thesisService.GetThesisById(id);
-                if (thesis == null || string.IsNullOrEmpty(thesis.PdfUrl))
-                    return NotFound(new { message = "Thesis or PDF path not found." });
+                if (thesis == null)
+                    return NotFound(new { message = "Thesis not found." });
 
-                var data = await _thesisService.GetPdfData(thesis.PdfUrl);
+                // Prefer PdfData from DTO (already resolved from DB), then PdfFileId, then PdfUrl
+                string? data = null;
+                if (!string.IsNullOrEmpty(thesis.PdfData))
+                {
+                    data = thesis.PdfData;
+                }
+                else if (!string.IsNullOrEmpty(thesis.PdfFileId))
+                {
+                    data = await _thesisService.GetPdfData(thesis.PdfFileId);
+                }
+                else if (!string.IsNullOrEmpty(thesis.PdfUrl))
+                {
+                    data = await _thesisService.GetPdfData(thesis.PdfUrl);
+                }
+
                 if (data == null)
-                    return NotFound(new { message = "PDF file not found on server." });
+                    return NotFound(new { message = "Thesis or PDF not found." });
 
                 var base64 = data;
                 var commaIndex = data.IndexOf(',');

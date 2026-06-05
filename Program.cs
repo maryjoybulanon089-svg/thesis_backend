@@ -118,8 +118,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Ensure the uploads directory exists for PDF file storage
-var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+// Ensure the uploads directory exists for PDF file storage under the app content root
+var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, "uploads");
 Directory.CreateDirectory(uploadsPath);
 
 // Trust proxy headers (X-Forwarded-For / X-Forwarded-Proto) when deployed behind a reverse proxy
