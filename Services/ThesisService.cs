@@ -282,7 +282,7 @@ namespace ThesisRepository.Services
 
         public async Task<string> UploadPdf(string fileData)
         {
-            // Store uploaded PDF on filesystem under the app content root /uploads and return a relative path
+            // Persist uploaded PDF into the UploadedFiles DB table (durable)
             var base64Data = fileData;
             var commaIndex = fileData.IndexOf(',');
             if (commaIndex >= 0)
@@ -290,12 +290,33 @@ namespace ThesisRepository.Services
 
             var bytes = Convert.FromBase64String(base64Data);
 
+            var id = Guid.NewGuid().ToString();
             var fileName = $"thesis_{DateTime.UtcNow.Ticks}.pdf";
-            var filePath = Path.Combine(_uploadsDir, fileName);
-            await File.WriteAllBytesAsync(filePath, bytes);
+            var uploaded = new Models.UploadedFile
+            {
+                Id = id,
+                FileName = fileName,
+                FileType = "application/pdf",
+                UploadedAt = DateTime.UtcNow,
+                Data = bytes
+            };
 
-            // Return a relative path suitable for URLs (e.g. "uploads/filename.pdf")
-            return Path.Combine("uploads", fileName).Replace("\\", "/");
+            _context.UploadedFiles.Add(uploaded);
+            await _context.SaveChangesAsync();
+
+            // Also try to write a copy to the local uploads directory for immediate static serving when possible.
+            try
+            {
+                var filePath = Path.Combine(_uploadsDir, fileName);
+                await File.WriteAllBytesAsync(filePath, bytes);
+            }
+            catch
+            {
+                // ignore filesystem write errors (platform may have ephemeral or read-only filesystem)
+            }
+
+            // Return uploaded file id (durable). Frontend should use this id to fetch the PDF via the API endpoints.
+            return id;
         }
 
         public async Task<string?> GetPdfData(string fileId)
